@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="static/task_manager/api.js"></script>
+    <title>Task Manager</title>
+  </head>
+  <style>
+   
+   .project-single{
+        background-color: whitesmoke;
+        font-family: Verdana;
+        padding: 5px;
+        color: grey;
+        width: 20%;
+        height: 200px;
+        box-shadow: 1px 1px 2px #000000;
+        border-style: solid;
+        border-color: lightskyblue;
+        border-radius: 5%;
+        display: inline-block;
+        margin-left: 1%;
+        margin-right: 1%;
+        margin-top: 1%;
+        margin-bottom: 1%;
+   }
+
+   #project-single-title{
+        text-align: center;
+   }
+
+   #project-single-dates{
+     font-size: small;
+   }
+
+   
+  </style>
+  <body>
+    <div id="app"></div>
+    <script type="text/babel">
+
+      class ProjectDetailCard extends React.Component {
+        constructor(props){
+            super(props);
+            this.state={
+            }
+        }
+
+        render(){
+          return(
+            <div id="project-tasks">
+              <h1> {this.props.title} </h1>
+              <div>
+                <h3>{this.props.task_name} </h3>
+                <div>
+                  {this.props.description}
+                </div>
+                <div>
+                  {this.props.due_date}
+                </div>
+              </div>
+            </div>
+          )
+        }
+      }
+
+      class AddProject extends React.Component {
+          constructor(props){
+              super(props);
+              this.state={
+                view: "todo"
+                
+              }
+          }
+          render(){
+            return(
+              <div>
+                <button onClick={this.goBack}> Back </button>
+                {this.state.view}
+              </div>
+            )
+          }
+
+          goBack = () => {
+            this.props.updateReturnView('')
+          }
+      }
+
+      class Project extends React.Component{
+        constructor(props){
+          super(props);
+          this.state={
+            project_arr: [],
+            gotdetails: false,
+          }
+        }
+        
+
+
+        render(){
+          return(
+            <div className="project-single" onClick={() => {this.props.updateReturnView('Single Project'); this.loadDetails(this.props.project_id) }}>
+                <h3 id="project-single-title"> {this.props.title} </h3>
+                {this.state.project_arr.map(project => {
+                    return<ProjectDetailCard task_name={project.task_name} description= {project.description} due_date={project.due_date} returnView="Single Project"/>
+            })}
+                <div id="project-single-dates"> Last Edited: {this.props.last_edited} </div>
+                <div type="hidden">{this.props.project_id} </div>
+            </div>
+          )
+        }
+
+        handleclick = (event) => {
+            this.props.updateReturnView("Single Project")
+          };
+
+        loadDetails = (id) => {
+
+          let project_arr = []
+
+          fetch(`/load_details/${id}`)
+          .then(response => {
+            return response.json()
+          })
+          .then(json => {
+            console.log('json', json)
+
+            for(var i = 0; i < json.length; i++){
+              var task_name = json[i].task_name;
+              var description = json[i].description;
+              var due_date = json[i].due_date;
+
+              project_arr.push({task_name:task_name, description:description, due_date:due_date})
+            }
+              this.setState({
+                project_arr: project_arr,
+                gotdetails: true,
+              })
+          })
+          // .then(() => {
+          //   this.props.updateReturnView('Single Project')
+          // })
+        }
+
+
+
+      }
+
+      class ProjectList extends React.Component{
+          constructor(props){
+              super(props);
+              this.state = {
+                projects: [],
+                gotarray: false,
+                returnView: this.props.returnView
+              }
+          }
+
+          componentDidMount(){
+          if(this.state.gotarray === false){
+
+            let projects_arr = []
+
+            fetch(`/load_projects`) 
+            .then(response => {
+              return response.json()
+            })
+            .then(json => {
+              console.log('json', json)
+        
+              console.log(typeof projects_arr)
+
+              for(var i = 0; i < json.length; i++){
+              var title = json[i].title;
+              var last_edit_timestamp = json[i].last_edit_timestamp;
+              var project_id = json[i].id
+              projects_arr.push({title:title, last_edited: last_edit_timestamp, id:project_id})
+            }
+
+              this.setState({
+              projects: projects_arr,
+              gotarray: true
+            })
+              })
+        
+              console.log(this.state.projects)
+              }
+        }  
+        
+          render(){
+            return(
+              <div>
+                {console.log(this.state.projects)}
+                {this.state.projects.map(project => {
+                    return<Project title={project.title} last_edited = {project.last_edited} project_id={project.id} 
+                    updateReturnView={this.props.updateReturnView} 
+                    updateProjectReturnView={this.updateProjectReturnView}/>
+            })}
+              </div>
+            )
+          }
+
+    
+
+      }
+
+      class App extends React.Component {
+
+        constructor(props){
+            super(props);
+            this.state = {
+                name: "Ben",
+                returnView: ""
+            }
+        } 
+
+        render() {
+          if(this.state.returnView === "Add Project"){
+            return (
+              <AddProject updateReturnView={this.updateReturnView.bind(this)}/>
+            )
+          }
+          else if(this.state.returnView === "Single Project"){
+            return(
+              <ProjectDetailCard />
+            )
+          }
+          else{
+          return (
+            <div>
+              <h1>
+                Welcome, {this.state.name}!</h1>
+              <h3> Projects </h3>
+              <button onClick = {this.updateAddProject}> Add Project </button>
+              <hr/>
+              {this.state.returnView}
+              <div>
+                <ProjectList returnView={this.state.returnView} updateReturnView={this.updateReturnView.bind(this)}/>
+              </div>
+            </div>
+          );
+          }
+        }
+
+        updateAddProject = () =>{
+          this.setState({
+            returnView: "Add Project"
+          })
+        }
+
+        updateReturnView = (value) => {
+          this.setState({
+            returnView: value
+          })
+        }
+
+        
+     
+
+        }
+                
+
+      ReactDOM.render(<App />, document.querySelector("#app"));
+
+    </script>
+  </body>
+</html>
