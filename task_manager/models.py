@@ -20,8 +20,8 @@ class Project(models.Model):
             "owner_id": self.user.id,
             "owner": self.user.username,
             "title": self.project_title,
-            "start_timestamp": self.project_start_time.strftime("%b %-d %Y, %-I:%M %p"),
-            "last_edit_timestamp": self.project_last_edited_time.strftime("%b %-d %Y, %-I:%M %p"),
+            "start_timestamp": self.project_start_time.strftime("%b %-d, %Y"),
+            "last_edit_timestamp": self.project_last_edited_time.strftime("%b %-d, %Y"),
         }
 
 
@@ -36,6 +36,7 @@ class Task(models.Model):
     task_due_date = models.DateTimeField(
         default=datetime.now()+timedelta(days=7))
     urgent = models.BooleanField(default=False)
+    completed = models.BooleanField(default=False)
 
     def serialize(self):
         return{
@@ -45,7 +46,8 @@ class Task(models.Model):
             "task_author": self.user.id,
             "task_name": self.task_name,
             "task_description": self.task_description,
-            "task_start_time": self.task_start_time,
-            "task_due_date": self.task_due_date,
-            "urgent": self.urgent
+            "task_start_time": self.task_start_time.strftime("%b %-d, %Y"),
+            "task_due_date": self.task_due_date.strftime("%b %-d, %Y"),
+            "urgent": self.urgent,
+            "completed": self.completed
         }

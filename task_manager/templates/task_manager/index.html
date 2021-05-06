@@ -8,23 +8,30 @@
     <title>Task Manager</title>
   </head>
   <style>
+    body{
+      background-color: white;
+    }
    
    .project-single{
-        background-color: whitesmoke;
+        background-color: rgb(241, 241, 241);
         font-family: Verdana;
         padding: 5px;
         color: grey;
-        width: 20%;
-        height: 200px;
+        width: fit-content;
+        height: fit-content;
         box-shadow: 1px 1px 2px #000000;
         border-style: solid;
-        border-color: lightskyblue;
+        border-color: rgba(255, 184, 54, 0.918);
         border-radius: 5%;
         display: inline-block;
         margin-left: 1%;
         margin-right: 1%;
         margin-top: 1%;
         margin-bottom: 1%;
+   }
+
+   .project-single:hover {
+      background-color: rgb(231, 230, 230);
    }
 
    #project-single-title{
@@ -34,6 +41,32 @@
    #project-single-dates{
      font-size: small;
    }
+
+   button{
+     background-color: rgba(255, 184, 54, 0.918);
+     border-style: solid;
+     border-width: 2px;
+     margin-left: 5px;
+     margin-right: 5px;
+   }
+
+   button:hover {
+    background-color: rgba(224, 158, 35, 0.918);
+   }
+
+   #welcome-header, #projects-header, #project-tasks, 
+   #task-title, #add-task-page, #add-project-page,
+   #line-break{
+    font-family: Verdana;
+    color: grey;
+   }
+
+   #completed-view{
+     color: rgb(32, 150, 32);
+     display: inline-block
+   }
+
+  
 
    
   </style>
@@ -45,40 +78,264 @@
         constructor(props){
             super(props);
             this.state={
+              test: "",
+              addTask: false,
+              completed: this.props.completed,
+
             }
         }
 
         render(){
+          if(this.state.completed === true){
+            var completed_view = " -- COMPLETED"
+            var mark_button = <button onClick ={() => {this.reinstateTask(this.props.id)}}> Reinstate Task</button>
+          }
+          else{
+            var completed_view = ""
+            var mark_button = <button onClick ={() => {this.markAsComplete(this.props.id)}}> Mark as Complete </button>
+          }
           return(
             <div id="project-tasks">
               <h1> {this.props.title} </h1>
               <div>
-                <h3>{this.props.task_name} </h3>
+                <h3>{this.props.task_name} <div id="completed-view">{completed_view}</div></h3>
                 <div>
                   {this.props.description}
                 </div>
                 <div>
-                  {this.props.due_date}
+                  Due Date: {this.props.due_date}
+                </div>
+                <div>
+                  <button id="delete-task" onClick={() => {this.deleteTask(this.props.id)}}> Delete </button>
+                  {mark_button}
                 </div>
               </div>
             </div>
           )
         }
+
+        addTaskState = () => {
+          this.setState({
+            addTask: true
+          })
+        }
+        deleteTask = (id) => {
+          fetch(`/delete_task/${id}`, {
+            method: 'DELETE'
+          })
+          .then( () => {
+            alert("This task has been removed")
+          })
+          .catch(error => {
+            console.log('Error:', error)
+          })
+        }
+        markAsComplete = (id) => {
+          if(this.state.completed === true){
+            alert("this task has already been completed")
+            return 1;
+          }
+          fetch(`mark_as_complete/${id}` , {
+            method: 'PUT',
+            body: JSON.stringify({
+              completed: true
+            })
+          })
+            .then( () => {
+              this.setState({
+                completed: true
+              })
+            alert("This task has been marked as completed")
+            })
+            .catch(error => {
+            console.log('Error:', error)
+            })
+        }
+
+        reinstateTask = (id) => {
+          fetch(`reinstate_task/${id}` , {
+            method: 'PUT',
+            body: JSON.stringify({
+              completed: false
+            })
+          })
+          .then( () => {
+              this.setState({
+                completed: false
+              })
+            alert("This task has been reinstated")
+            })
+            .catch(error => {
+            console.log('Error:', error)
+            })
+        }
+      }
+
+      class AddTask extends React.Component {
+        constructor(props){
+          super(props);
+          this.state={
+            project: 0
+          }
+        }
+        render(){
+            return(
+              <div id="add-task-page">
+                <form>
+                  <div id="affiliated-project-id">
+                    {this.props.id}
+                  </div>
+                  <label>Task Todo:</label>
+                  <input id="task-name" type="text"/>
+                  <label>Description: </label>
+                  <input id="task-description" type="text"/>
+                  <label>Due Date: </label>
+                  <input id="task-due-date" type="datetime" placeholder="May 12, 2021"/>
+                  <button onClick={() => {this.addTask(this.props.id)}}>Add</button>
+                </form>
+              </div>
+            )
+          }
+          addTask = (id) => {
+          const name = document.querySelector('#task-name').value;
+          const description = document.querySelector('#task-description').value;
+          const due_date = document.querySelector('#task-due-date').value;
+          const affiliated_project_id = this.props.affiliated_project_id;
+          fetch(`/add_task/${id}`, {
+            method: "POST",
+            body: JSON.stringify({
+              task_name: name,
+              task_description: description,
+              task_due_date: due_date,
+              affiliated_project_id: affiliated_project_id
+            }) 
+          })
+          .then(() => {
+              console.log("added")
+            })
+        }
+
+      }
+
+      class TaskList extends React.Component {
+        constructor(props){
+          super(props);
+          this.state={
+            tasks: [],
+            addTaskState: false,
+            affiliated_project_id: 0
+          }
+        }
+
+        componentDidMount(){
+          this.loadDetails(this.props.id)
+        }
+
+        render(){
+          if(this.state.addTaskState === true){
+            var addTaskView = <AddTask id={this.props.id}/>
+          }
+          else{
+            var addTaskView = ""
+          }
+          return(
+          <div>
+            <div>
+              <h1 id="task-title">{this.props.title}</h1>
+              <hr id="line-break"/>
+              <button onClick={this.goBack}> Back </button>
+              <button onClick={() => {this.deleteTask(this.props.id)}}> Delete Project </button>
+              <div>
+                <button onClick={this.addTaskState}> Add Task </button>
+              </div>
+              <div>
+                {addTaskView}
+              </div>
+              {this.state.tasks.map(task => {
+                  return<ProjectDetailCard task_name={task.task_name} description= {task.description} 
+                  due_date={task.due_date} 
+                  affiliated_project_id={this.props.id}
+                  id={task.id}
+                  completed={task.completed}
+                  updateReturnView={this.props.updateReturnView}/>
+            })}
+            </div>
+          </div>
+            )
+        }
+
+        loadDetails = (id) => {
+
+        let project_arr = []
+
+        fetch(`/load_details/${id}`)
+        .then(response => {
+          return response.json()
+        })
+        .then(json => {
+          console.log('json', json)
+
+          for(var i = 0; i < json.length; i++){
+            var task_name = json[i].task_name;
+            var description = json[i].task_description;
+            var due_date = json[i].task_due_date;
+            var affiliated_project_id = json[i].affiliated_project_id
+            var id = json[i].id
+            var completed = json[i].completed
+
+            project_arr.push({task_name:task_name, id:id, completed: completed, description:description, due_date:due_date, affiliated_project_id:affiliated_project_id})
+          }
+          console.log(id)
+            this.setState({
+              tasks: project_arr,
+              affiliated_project_id: affiliated_project_id
+            })
+          })
+        }
+
+        goBack = () => {
+            this.props.updateReturnView('')
+          }
+        
+        addTaskState = () => {
+          this.setState({
+            addTaskState: true
+          })
+        }
+
+        deleteTask = (id) => {
+          fetch(`delete_project/${id}`, {
+            method: 'DELETE'
+          })
+          .then( () => {
+            alert("This project has been removed")
+          })
+          .catch(error => {
+            console.log('Error:', error)
+          })
+        }
+
       }
 
       class AddProject extends React.Component {
           constructor(props){
               super(props);
               this.state={
-                view: "todo"
+                view: ""
                 
               }
           }
           render(){
             return(
-              <div>
+              <div id="add-project-page">
                 <button onClick={this.goBack}> Back </button>
-                {this.state.view}
+                  <form>
+                    <div>
+                    <label for="project-name"> Project Name: </label>
+                    <input id="project-name" type="text"/>
+                    <button onClick={this.submitProject}>Submit</button>
+                    </div>
+                  </form>
               </div>
             )
           }
@@ -86,65 +343,40 @@
           goBack = () => {
             this.props.updateReturnView('')
           }
+
+          submitProject = () => {
+            const title = document.querySelector('#project-name').value;
+            fetch(`/submit_project`, {
+              method: 'POST',
+              body: JSON.stringify({
+                title:title
+              })
+            })
+            .then(() => {
+              console.log("added")
+            })
+          }
+
       }
 
       class Project extends React.Component{
         constructor(props){
           super(props);
           this.state={
-            project_arr: [],
-            gotdetails: false,
+            test: ""
           }
         }
         
-
-
         render(){
           return(
-            <div className="project-single" onClick={() => {this.props.updateReturnView('Single Project'); this.loadDetails(this.props.project_id) }}>
+            <div className="project-single" onClick={() => {this.props.updateReturnView('Single Project'); 
+              this.props.updateProjectID(this.props.project_id); this.props.updateProjectTitle(this.props.title)}}>
                 <h3 id="project-single-title"> {this.props.title} </h3>
-                {this.state.project_arr.map(project => {
-                    return<ProjectDetailCard task_name={project.task_name} description= {project.description} due_date={project.due_date} returnView="Single Project"/>
-            })}
                 <div id="project-single-dates"> Last Edited: {this.props.last_edited} </div>
-                <div type="hidden">{this.props.project_id} </div>
+                <div type="hidden" id={this.props.project_id}></div>
             </div>
           )
         }
-
-        handleclick = (event) => {
-            this.props.updateReturnView("Single Project")
-          };
-
-        loadDetails = (id) => {
-
-          let project_arr = []
-
-          fetch(`/load_details/${id}`)
-          .then(response => {
-            return response.json()
-          })
-          .then(json => {
-            console.log('json', json)
-
-            for(var i = 0; i < json.length; i++){
-              var task_name = json[i].task_name;
-              var description = json[i].description;
-              var due_date = json[i].due_date;
-
-              project_arr.push({task_name:task_name, description:description, due_date:due_date})
-            }
-              this.setState({
-                project_arr: project_arr,
-                gotdetails: true,
-              })
-          })
-          // .then(() => {
-          //   this.props.updateReturnView('Single Project')
-          // })
-        }
-
-
 
       }
 
@@ -169,8 +401,6 @@
             })
             .then(json => {
               console.log('json', json)
-        
-              console.log(typeof projects_arr)
 
               for(var i = 0; i < json.length; i++){
               var title = json[i].title;
@@ -185,17 +415,17 @@
             })
               })
         
-              console.log(this.state.projects)
               }
         }  
         
           render(){
             return(
               <div>
-                {console.log(this.state.projects)}
                 {this.state.projects.map(project => {
                     return<Project title={project.title} last_edited = {project.last_edited} project_id={project.id} 
                     updateReturnView={this.props.updateReturnView} 
+                    updateProjectID={this.props.updateProjectID}
+                    updateProjectTitle={this.props.updateProjectTitle}
                     updateProjectReturnView={this.updateProjectReturnView}/>
             })}
               </div>
@@ -212,7 +442,9 @@
             super(props);
             this.state = {
                 name: "Ben",
-                returnView: ""
+                returnView: "",
+                projectID: 0,
+                projectTitle: ""
             }
         } 
 
@@ -224,20 +456,29 @@
           }
           else if(this.state.returnView === "Single Project"){
             return(
-              <ProjectDetailCard />
+              // <ProjectDetailCard updateReturnView={this.updateReturnView.bind(this)}/>
+              <TaskList title ={this.state.projectTitle}
+              id={this.state.projectID} 
+              updateReturnView={this.updateReturnView.bind(this)} 
+              updateProjectID={this.updateProjectID.bind(this)}
+              updateProjectTitle={this.updateProjectTitle.bind(this)}/>
             )
           }
           else{
           return (
             <div>
-              <h1>
+              <h1 id="welcome-header">
                 Welcome, {this.state.name}!</h1>
-              <h3> Projects </h3>
               <button onClick = {this.updateAddProject}> Add Project </button>
+              <button> Logout </button>
               <hr/>
               {this.state.returnView}
+              <h3 id="projects-header"> Projects </h3>
               <div>
-                <ProjectList returnView={this.state.returnView} updateReturnView={this.updateReturnView.bind(this)}/>
+                <ProjectList returnView={this.state.returnView} 
+                updateProjectID={this.updateProjectID.bind(this)} 
+                updateReturnView={this.updateReturnView.bind(this)}
+                updateProjectTitle={this.updateProjectTitle.bind(this)}/>
               </div>
             </div>
           );
@@ -256,8 +497,18 @@
           })
         }
 
-        
-     
+        updateProjectID = (value) => {
+          this.setState({
+            projectID: value
+          })
+          
+        }
+
+        updateProjectTitle = (value) => {
+          this.setState({
+            projectTitle: value
+          })
+        }
 
         }
                 
