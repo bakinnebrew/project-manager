@@ -21,5 +21,9 @@ urlpatterns = [
     path("mark_as_complete/<int:task_id>",
          views.mark_as_complete, name="mark_as_complete"),
     path("reinstate_task/<int:task_id>",
-         views.reinstate_task, name="reinstate_task")
+         views.reinstate_task, name="reinstate_task"),
+    path("edit_project/<int:project_id>",
+         views.edit_project, name="edit_project"),
+    path("read_alerts", views.read_alerts, name="read_alerts"),
+    # path("load_count/<int:project_id>", views.load_count, name="load_count")
 ]

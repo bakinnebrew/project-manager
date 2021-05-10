@@ -9,7 +9,7 @@
   </head>
   <style>
     body{
-      background-color: white;
+      background-color: grey;
     }
    
    .project-single{
@@ -58,13 +58,56 @@
    #task-title, #add-task-page, #add-project-page,
    #line-break{
     font-family: Verdana;
-    color: grey;
+    color: whitesmoke;
    }
 
    #completed-view{
-     color: rgb(32, 150, 32);
+     color: lime;
      display: inline-block
    }
+
+   #alert-list{
+     width: fit-content;
+     height: fit-content;
+     background-color: rgb(253, 244, 116);
+     border-style: solid;
+     border-color: rgb(240, 229, 85);
+     border-radius: 5%;
+     font-family: Verdana;
+     color: grey;
+     margin-top: 5px;
+     padding: 5px;
+   }
+
+   #alert-list:hover{
+    background-color: rgb(253, 242, 81);
+   }
+
+   body{
+    font-family: Verdana;
+    color: grey;
+   }
+
+   #logout-link{
+     text-decoration: none;
+     color:whitesmoke;
+     border: whitesmoke;
+     border-radius: 5px;
+     border-style: solid;
+     border-width: 1px;
+     width: fit-content;
+     height: fit-content;
+     padding: 5px;
+     color: whitesmoke;
+   }
+
+   #logout-link:hover{
+     color:grey;
+     background-color: whitesmoke;
+   } 
+
+
+
 
   
 
@@ -73,6 +116,73 @@
   <body>
     <div id="app"></div>
     <script type="text/babel">
+
+      class Alert extends React.Component {
+
+        render(){
+          return(
+            <div id="alert-list">
+              <div>{this.props.alert_message}</div>
+              <div>
+                Task: {this.props.affiliated_task}
+              </div>
+              <div>
+                Project: {this.props.affiliated_project}
+              </div>
+            </div>
+          )
+        }
+      }
+
+      class AlertList extends React.Component {
+        constructor(props){
+            super(props);
+            this.state={
+              alerts: [],
+            }
+        }
+
+        componentDidMount(){
+          this.readAlerts()
+        }
+
+        render(){
+          return(
+            <div>
+              {this.state.alerts.map(alert => {
+                  return<Alert alert_message={alert.alert_message} affiliated_project= {alert.affiliated_project} 
+                  affiliated_task={alert.affiliated_task} /> })}
+            </div>
+          )
+        }
+
+        readAlerts = () => {
+
+          let alerts_arr = []
+
+          fetch(`read_alerts`)
+          .then(response => {
+          return response.json()
+          })
+          .then(json => {
+            console.log('json', json)
+
+            console.log(alerts_arr)
+
+            for(var i = 0; i < json.length; i++){
+              var alert_message = json[i].alert_message
+              var affiliated_project = json[i].affiliated_project
+              var affiliated_task = json[i].affiliated_task
+              alerts_arr.push({alert_message:alert_message, affiliated_project:affiliated_project, affiliated_task:affiliated_task})
+            }
+            console.log(alerts_arr)
+              this.setState({
+                alerts: alerts_arr
+            })
+            })
+          }    
+
+      }
 
       class ProjectDetailCard extends React.Component {
         constructor(props){
@@ -147,6 +257,13 @@
               })
             alert("This task has been marked as completed")
             })
+          var project_last_edit_time = "";
+          fetch(`edit_project/${this.props.affiliated_project_id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              project_last_edit_time: project_last_edit_time
+            })
+          })
             .catch(error => {
             console.log('Error:', error)
             })
@@ -165,6 +282,13 @@
               })
             alert("This task has been reinstated")
             })
+            var project_last_edit_time = "";
+          fetch(`edit_project/${this.props.affiliated_project_id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              project_last_edit_time: project_last_edit_time
+            })
+          })
             .catch(error => {
             console.log('Error:', error)
             })
@@ -182,15 +306,18 @@
             return(
               <div id="add-task-page">
                 <form>
-                  <div id="affiliated-project-id">
-                    {this.props.id}
-                  </div>
-                  <label>Task Todo:</label>
+                  <div>
+                  <label>Task Name:</label>
                   <input id="task-name" type="text"/>
+                  </div>
+                  <div>
                   <label>Description: </label>
-                  <input id="task-description" type="text"/>
+                  <textarea id="task-description" type="text"/>
+                  </div>
+                  <div>
                   <label>Due Date: </label>
-                  <input id="task-due-date" type="datetime" placeholder="May 12, 2021"/>
+                  <input id="task-due-date" type="datetime" placeholder="e.g., May 12, 2021"/>
+                  </div>
                   <button onClick={() => {this.addTask(this.props.id)}}>Add</button>
                 </form>
               </div>
@@ -406,7 +533,8 @@
               var title = json[i].title;
               var last_edit_timestamp = json[i].last_edit_timestamp;
               var project_id = json[i].id
-              projects_arr.push({title:title, last_edited: last_edit_timestamp, id:project_id})
+              var task_count = json[i].task_count
+              projects_arr.push({title:title, task_count:task_count, last_edited: last_edit_timestamp, id:project_id})
             }
 
               this.setState({
@@ -448,6 +576,7 @@
             }
         } 
 
+
         render() {
           if(this.state.returnView === "Add Project"){
             return (
@@ -469,16 +598,23 @@
             <div>
               <h1 id="welcome-header">
                 Welcome, {this.state.name}!</h1>
-              <button onClick = {this.updateAddProject}> Add Project </button>
-              <button> Logout </button>
+              <div id="logout-button" >
+                <a id="logout-link"href="{% url 'task_manager:logout' %}"> Logout </a>
+              </div>
+              <br/>
               <hr/>
-              {this.state.returnView}
               <h3 id="projects-header"> Projects </h3>
+              <button onClick = {this.updateAddProject}> Add Project </button>
               <div>
                 <ProjectList returnView={this.state.returnView} 
                 updateProjectID={this.updateProjectID.bind(this)} 
                 updateReturnView={this.updateReturnView.bind(this)}
                 updateProjectTitle={this.updateProjectTitle.bind(this)}/>
+              </div>
+              <div>
+                <hr/>
+                <h3 id="alert-section"> Alerts </h3>
+                <AlertList />
               </div>
             </div>
           );

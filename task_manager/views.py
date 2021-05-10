@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from django.shortcuts import render
 import json
 from django.contrib.auth import authenticate, login, logout
@@ -8,7 +8,7 @@ from django.db import IntegrityError
 from django.views.decorators.csrf import csrf_exempt
 from dateutil.parser import parse
 
-from .models import User, Task, Project
+from .models import User, Task, Project, Alert
 
 
 def index(request):
@@ -28,10 +28,26 @@ def load_projects(request):
 def load_details(request, project_id):
     if request.method == "GET":
         # query for project based on model id
-
         project = Project.objects.get(id=project_id)
         tasks = Task.objects.filter(affiliated_project=project)
         return JsonResponse([task.serialize() for task in tasks], safe=False)
+
+
+def read_alerts(request):
+    if request.method == "GET":
+        # query for alerts
+        alerts = Alert.objects.filter(alert_owner=request.user)
+        return JsonResponse([alert.serialize() for alert in alerts], safe=False)
+
+
+# todo
+# def load_count(request, project_id):
+#     if request.method == "GET":
+#         # query for project count based on project_id
+#         project = Project.objects.get(id=project_id)
+#         tasks = Task.objects.filter(affiliated_project=project)
+#         incompleted_tasks = tasks.filter(completed=False)
+#         return JsonResponse([incompleted_task.serialize() for incompleted_task in incompleted_tasks], safe=False)
 
 
 @csrf_exempt
@@ -50,6 +66,22 @@ def submit_project(request):
             )
             project.save()
             return JsonResponse({"Success": "project has been added"}, status=204)
+
+
+@csrf_exempt
+def edit_project(request, project_id):
+    if request.method == "PUT":
+        try:
+            project = Project.objects.get(pk=project_id)
+            # edit Last Edited field to right now
+            data = json.loads(request.body)
+            if data.get("project_last_edit_time") == "":
+                edited_time = datetime.now()
+                project.project_last_edited_time = edited_time
+            project.save()
+            return HttpResponse(status=204)
+        except Task.DoesNotExist:
+            return JsonResponse({"error": "task not found."}, status=404)
 
 
 @csrf_exempt
@@ -138,6 +170,21 @@ def login_view(request):
         # Check if authentication successful
         if user is not None:
             login(request, user)
+            alerts = Alert.objects.filter(alert_owner=request.user)
+            for alert in alerts:
+                alert.delete()
+            tasks = Task.objects.filter(
+                task_user=request.user, completed=False)
+            one_day = datetime.now(timezone.utc) + timedelta(days=1)
+            for task in tasks:
+                if task.task_due_date <= one_day:
+                    alert = Alert(
+                        alert_message="A task is due soon!",
+                        affiliated_task=task,
+                        affiliated_project=task.affiliated_project,
+                        alert_owner=request.user
+                    )
+                    alert.save()
             return render(request, "task_manager/index.html")
         else:
             return render(request, "task_manager/login.html", {
@@ -149,7 +196,7 @@ def login_view(request):
 
 def logout_view(request):
     logout(request)
-    return HttpResponseRedirect(reverse("index"))
+    return render(request, "task_manager/login.html")
 
 
 def register(request):
